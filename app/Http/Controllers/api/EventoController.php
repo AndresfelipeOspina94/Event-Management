@@ -1,49 +1,74 @@
 <?php
 
-namespace App\Http\Controllers\API;
+namespace App\Http\Controllers\api;
 
-use App\Http\Controllers\Controller;
+use App\Models\Evento;
 use Illuminate\Http\Request;
+use Illuminate\Database\QueryException;
+use App\Http\Controllers\Controller;
 
 class EventoController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        $eventos = Evento::with('sesiones')->get();
+        return response()->json($eventos);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'nombre' => 'required',
+            'descripcion' => 'required',
+            'fecha_inicio' => 'required|date',
+            'fecha_fin' => 'required|date',
+            'ubicacion' => 'required',
+        ]);
+
+        try {
+            $evento = new Evento($request->all());
+            $evento->save();
+            return response()->json(['success' => 'Evento creado correctamente'], 201);
+        } catch (\Exception $e) {
+            \Log::error($e->getMessage());
+            return response()->json(['error' => 'No se pudo guardar el evento'], 500);
+        }
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function show($id)
     {
-        //
+        $evento = Evento::with('sesiones')->findOrFail($id);
+        return response()->json($evento);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function update(Request $request, $id)
     {
-        //
+        $request->validate([
+            'nombre' => 'required',
+            'descripcion' => 'required',
+            'fecha_inicio' => 'required|date',
+            'fecha_fin' => 'required|date',
+            'ubicacion' => 'required',
+        ]);
+
+        try {
+            $evento = Evento::findOrFail($id);
+            $evento->update($request->all());
+            return response()->json(['success' => 'Evento actualizado correctamente']);
+        } catch (\Exception $e) {
+            \Log::error($e->getMessage());
+            return response()->json(['error' => 'No se pudo actualizar el evento'], 500);
+        }
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
+    public function destroy($id)
     {
-        //
+        try {
+            Evento::findOrFail($id)->delete();
+            return response()->json(['success' => 'Evento eliminado correctamente']);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'No se puede eliminar el evento porque está asociado a otros registros'], 500);
+        }
     }
 }
+
