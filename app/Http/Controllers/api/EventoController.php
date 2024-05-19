@@ -4,19 +4,32 @@ namespace App\Http\Controllers\api;
 
 use App\Models\Evento;
 use Illuminate\Http\Request;
-use Illuminate\Database\QueryException;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator as validator;
 
 class EventoController extends Controller
 {
     public function index()
     {
-        $eventos = Evento::with('sesiones')->get();
+        $eventos = Evento::all();
         return response()->json($eventos);
     }
 
     public function store(Request $request)
     {
+        $validator = validator::make($request->all(), [
+            'nombre' => 'required',
+            'descripcion' => 'required',
+            'fecha_inicio' => 'required|date',
+            'fecha_fin' => 'required|date',
+            'ubicacion' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
         $request->validate([
             'nombre' => 'required',
             'descripcion' => 'required',
@@ -30,20 +43,20 @@ class EventoController extends Controller
             $evento->save();
             return response()->json(['success' => 'Evento creado correctamente'], 201);
         } catch (\Exception $e) {
-            \Log::error($e->getMessage());
+            Log::error($e->getMessage()); // Asegúrate de que Log esté correctamente importado
             return response()->json(['error' => 'No se pudo guardar el evento'], 500);
         }
     }
 
     public function show($id)
     {
-        $evento = Evento::with('sesiones')->findOrFail($id);
+        $evento = Evento::findOrFail($id);
         return response()->json($evento);
     }
 
     public function update(Request $request, $id)
     {
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'nombre' => 'required',
             'descripcion' => 'required',
             'fecha_inicio' => 'required|date',
@@ -51,12 +64,16 @@ class EventoController extends Controller
             'ubicacion' => 'required',
         ]);
 
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
         try {
             $evento = Evento::findOrFail($id);
             $evento->update($request->all());
             return response()->json(['success' => 'Evento actualizado correctamente']);
         } catch (\Exception $e) {
-            \Log::error($e->getMessage());
+            Log::error($e->getMessage());
             return response()->json(['error' => 'No se pudo actualizar el evento'], 500);
         }
     }
@@ -66,9 +83,9 @@ class EventoController extends Controller
         try {
             Evento::findOrFail($id)->delete();
             return response()->json(['success' => 'Evento eliminado correctamente']);
-        } catch (QueryException $e) {
+        } catch (\Exception $e) {
+            Log::error($e->getMessage()); // Asegúrate de que Log esté correctamente importado
             return response()->json(['error' => 'No se puede eliminar el evento porque está asociado a otros registros'], 500);
         }
     }
 }
-
